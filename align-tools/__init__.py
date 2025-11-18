@@ -7,7 +7,7 @@ bl_info = {
     "author": "gabhead, Lell, Anfeo, updated by ChatGPT",
     "version": (1, 2, 0),
     "blender": (2, 80, 0),
-    "location": "View3D > Sidebar > Item > Align Tools",
+    "location": "View3D > Sidebar > Align Tools",
     "description": "Advanced alignment tools for objects, origins and cursor",
     "category": "Object",
 }
@@ -538,7 +538,7 @@ class AlignAddonPreferences(AddonPreferences):
     category: StringProperty(
         name="Category",
         description="Choose a name for the category of the panel",
-        default="Item",
+        default="Align Tools",
         update=update_panel,
     )
 
@@ -1019,7 +1019,7 @@ class VIEW3D_PT_AlignUi(Panel):
     bl_idname = "VIEW3D_PT_AlignUi"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "Item"
+    bl_category = "Align Tools"
 
     def draw(self, context):
         layout = self.layout
@@ -1086,6 +1086,16 @@ panels = (
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
+
+    category = "Align Tools"
+    prefs = getattr(bpy.context, "preferences", None)
+    if prefs:
+        addon_prefs = prefs.addons.get(__name__)
+        if addon_prefs:
+            category = addon_prefs.preferences.category
+
+    for panel in panels:
+        panel.bl_category = category
 
 
 def unregister():
