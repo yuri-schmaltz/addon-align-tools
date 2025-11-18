@@ -7,7 +7,7 @@ bl_info = {
     "author": "gabhead, Lell, Anfeo, updated by ChatGPT",
     "version": (1, 2, 0),
     "blender": (2, 80, 0),
-    "location": "View3D > Sidebar > Item > Align Tools",
+    "location": "View3D > Sidebar > Align Tools",
     "description": "Advanced alignment tools for objects, origins and cursor",
     "category": "Object",
 }
@@ -473,32 +473,29 @@ def align_function(context,
     elif subject == "2":  # Cursor
         cur = context.scene.cursor.location
 
-        if self_or_active == "0":  # Cursor em relação ao ativo
+        def set_cursor_from_vector(target_co):
+            if loc_x:
+                cur.x = target_co.x + loc_offset[0]
+            if loc_y:
+                cur.y = target_co.y + loc_offset[1]
+            if loc_z:
+                cur.z = target_co.z + loc_offset[2]
+
+        if self_or_active in {"0", "1"}:  # Cursor em relação ao ativo
             ref_points = get_reference_points(act_obj, "global")
+            ref_min = Vector((ref_points[0], ref_points[3], ref_points[6]))
+            ref_max = Vector((ref_points[2], ref_points[5], ref_points[8]))
+            ref_center = (ref_min + ref_max) * 0.5
+            ref_pivot = act_obj.matrix_world.translation.copy()
 
             if ref2 == "0":  # Min
-                if loc_x:
-                    cur.x = ref_points[0] + loc_offset[0]
-                if loc_y:
-                    cur.y = ref_points[3] + loc_offset[1]
-                if loc_z:
-                    cur.z = ref_points[6] + loc_offset[2]
-
+                set_cursor_from_vector(ref_min)
             elif ref2 == "1":  # Center
-                if loc_x:
-                    cur.x = ref_points[1] + loc_offset[0]
-                if loc_y:
-                    cur.y = ref_points[4] + loc_offset[1]
-                if loc_z:
-                    cur.z = ref_points[7] + loc_offset[2]
-
+                set_cursor_from_vector(ref_center)
+            elif ref2 == "2":  # Pivot
+                set_cursor_from_vector(ref_pivot)
             elif ref2 == "3":  # Max
-                if loc_x:
-                    cur.x = ref_points[2] + loc_offset[0]
-                if loc_y:
-                    cur.y = ref_points[5] + loc_offset[1]
-                if loc_z:
-                    cur.z = ref_points[8] + loc_offset[2]
+                set_cursor_from_vector(ref_max)
 
         elif self_or_active == "2":  # Cursor em relação à seleção inteira
             ref_co = point_in_selection(act_obj, sel_obj)
@@ -506,28 +503,13 @@ def align_function(context,
             sel_center = sel_min + (sel_max - sel_min) * 0.5
 
             if ref2 == "0":  # Min
-                if loc_x:
-                    cur.x = sel_min.x + loc_offset[0]
-                if loc_y:
-                    cur.y = sel_min.y + loc_offset[1]
-                if loc_z:
-                    cur.z = sel_min.z + loc_offset[2]
-
+                set_cursor_from_vector(sel_min)
             elif ref2 == "1":  # Center
-                if loc_x:
-                    cur.x = sel_center.x + loc_offset[0]
-                if loc_y:
-                    cur.y = sel_center.y + loc_offset[1]
-                if loc_z:
-                    cur.z = sel_center.z + loc_offset[2]
-
+                set_cursor_from_vector(sel_center)
+            elif ref2 == "2":  # Pivot (usa o centro da seleção)
+                set_cursor_from_vector(sel_center)
             elif ref2 == "3":  # Max
-                if loc_x:
-                    cur.x = sel_max.x + loc_offset[0]
-                if loc_y:
-                    cur.y = sel_max.y + loc_offset[1]
-                if loc_z:
-                    cur.z = sel_max.z + loc_offset[2]
+                set_cursor_from_vector(sel_max)
 
 
 # ------------------------------------------------------------------------
@@ -556,7 +538,7 @@ class AlignAddonPreferences(AddonPreferences):
     category: StringProperty(
         name="Category",
         description="Choose a name for the category of the panel",
-        default="Item",
+        default="Align Tools",
         update=update_panel,
     )
 
@@ -1037,7 +1019,7 @@ class VIEW3D_PT_AlignUi(Panel):
     bl_idname = "VIEW3D_PT_AlignUi"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "Item"
+    bl_category = "Align Tools"
 
     def draw(self, context):
         layout = self.layout
@@ -1104,6 +1086,16 @@ panels = (
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
+
+    category = "Align Tools"
+    prefs = getattr(bpy.context, "preferences", None)
+    if prefs:
+        addon_prefs = prefs.addons.get(__name__)
+        if addon_prefs:
+            category = addon_prefs.preferences.category
+
+    for panel in panels:
+        panel.bl_category = category
 
 
 def unregister():
